@@ -14,27 +14,30 @@ on:
 jobs:
   build-solaris:
     name: Solaris
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
 
     - uses: actions/checkout@v2
+      
+    - name: Install dependencies
+      run: brew cask install virtualbox vagrant
 
-    - name: Install Vagrant
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y software-properties-common
-        wget https://releases.hashicorp.com/vagrant/2.2.5/vagrant_2.2.5_x86_64.deb -O /tmp/vagrant_2.2.5_x86_64.deb
-        sudo dpkg -i /tmp/vagrant_2.2.5_x86_64.deb
-        rm -rf Vagrantfile
-        vagrant init tnarik/solaris10-minimal
+#     - name: Install Vagrant
+#       run: |
+#         sudo apt-get update
+#         sudo apt-get install -y software-properties-common
+#         wget https://releases.hashicorp.com/vagrant/2.2.5/vagrant_2.2.5_x86_64.deb -O /tmp/vagrant_2.2.5_x86_64.deb
+#         sudo dpkg -i /tmp/vagrant_2.2.5_x86_64.deb
+#         rm -rf Vagrantfile
+#         vagrant init tnarik/solaris10-minimal
 
-    - name: Install Virtualbox
-      run: |
-        wget -q https://www.virtualbox.org/download/oracle_vbox_2016.asc -O- | sudo apt-key add -
-        wget -q https://www.virtualbox.org/download/oracle_vbox.asc -O- | sudo apt-key add -
-        sudo add-apt-repository "deb [arch=amd64] http://download.virtualbox.org/virtualbox/debian bionic contrib"
-        sudo apt-get update
-        sudo apt-get -y install virtualbox-6.0
+#     - name: Install Virtualbox
+#       run: |
+#         wget -q https://www.virtualbox.org/download/oracle_vbox_2016.asc -O- | sudo apt-key add -
+#         wget -q https://www.virtualbox.org/download/oracle_vbox.asc -O- | sudo apt-key add -
+#         sudo add-apt-repository "deb [arch=amd64] http://download.virtualbox.org/virtualbox/debian bionic contrib"
+#         sudo apt-get update
+#         sudo apt-get -y install virtualbox-6.0
 
     - run: |
         cd ansible
