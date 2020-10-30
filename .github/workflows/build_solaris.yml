@@ -39,7 +39,6 @@ jobs:
     - run: |
         cd ansible
         ln -sf Vagrantfile.Solaris10 Vagrantfile
-        ssh-keygen -q -f $PWD/id_rsa -t rsa -N ''
         vagrantPORT=$(vagrant port | grep host | awk '{ print $4 }')
         echo "[127.0.0.1]:${vagrantPORT}" >> playbooks/AdoptOpenJDK_Unix_Playbook/hosts.unx
         # Remove IP from known_hosts if already found
