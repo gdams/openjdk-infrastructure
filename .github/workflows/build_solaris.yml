@@ -14,32 +14,16 @@ on:
 jobs:
   build-solaris:
     name: Solaris
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
 
     - uses: actions/checkout@v2
-      
+
     - name: Install dependencies
-      run: brew cask install virtualbox vagrant
+      run: brew cask install virtualbox vagrant ansible
 
-#     - name: Install Vagrant
-#       run: |
-#         sudo apt-get update
-#         sudo apt-get install -y software-properties-common
-#         wget https://releases.hashicorp.com/vagrant/2.2.5/vagrant_2.2.5_x86_64.deb -O /tmp/vagrant_2.2.5_x86_64.deb
-#         sudo dpkg -i /tmp/vagrant_2.2.5_x86_64.deb
-#         rm -rf Vagrantfile
-#         vagrant init tnarik/solaris10-minimal
-
-#     - name: Install Virtualbox
-#       run: |
-#         wget -q https://www.virtualbox.org/download/oracle_vbox_2016.asc -O- | sudo apt-key add -
-#         wget -q https://www.virtualbox.org/download/oracle_vbox.asc -O- | sudo apt-key add -
-#         sudo add-apt-repository "deb [arch=amd64] http://download.virtualbox.org/virtualbox/debian bionic contrib"
-#         sudo apt-get update
-#         sudo apt-get -y install virtualbox-6.0
-
-    - run: |
+    - name: Setup Vagrant VM
+      run: |
         cd ansible
         ln -sf Vagrantfile.Solaris10 Vagrantfile
         rm -f id_rsa.pub id_rsa
@@ -51,4 +35,6 @@ jobs:
         echo "[127.0.0.1]:${vagrantPORT}" >> playbooks/AdoptOpenJDK_Unix_Playbook/hosts.unx
         sed -i -e "s/.*hosts:.*/- hosts: all/g" playbooks/AdoptOpenJDK_Unix_Playbook/main.yml
         awk '{print}/^\[defaults\]$/{print "private_key_file = id_rsa"; print "timeout = 30"}' < ansible.cfg > ansible.cfg.tmp && mv ansible.cfg.tmp ansible.cfg
-        ansible-playbook -i playbooks/AdoptOpenJDK_Unix_Playbook/hosts.unx -u vagrant -b --skip-tags adoptopenjdk,jenkins playbooks/AdoptOpenJDK_Unix_Playbook/main.yml
+
+    - name: Run Asible Playbook
+      run: ansible-playbook -i playbooks/AdoptOpenJDK_Unix_Playbook/hosts.unx -u vagrant -b --skip-tags adoptopenjdk,jenkins playbooks/AdoptOpenJDK_Unix_Playbook/main.yml
