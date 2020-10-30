@@ -37,12 +37,15 @@ jobs:
         sudo apt-get -y install virtualbox-6.0
 
     - run: |
-        cd ansible/pbTestScripts
-        bash -x ./vagrantPlaybookCheck.sh -v Solaris10
-
-    # - name: Run Ansible Playbook
-    #   run: |
-    #     echo "localhost ansible_user=runner ansible_connection=local" > ansible/hosts
-    #     set -eux
-    #     cd ansible
-    #     sudo ansible-playbook -i hosts playbooks/AdoptOpenJDK_Unix_Playbook/main.yml --skip-tags="hosts_file,hostname,brew_cu,kernel_tuning,adoptopenjdk,jenkins,nagios,superuser,swap_file,crontab"
+        cd ansible
+        ln -sf Vagrantfile.Solaris10 Vagrantfile
+        ssh-keygen -q -f $PWD/id_rsa -t rsa -N ''
+        vagrantPORT=$(vagrant port | grep host | awk '{ print $4 }')
+        echo "[127.0.0.1]:${vagrantPORT}" >> playbooks/AdoptOpenJDK_Unix_Playbook/hosts.unx
+        # Remove IP from known_hosts if already found
+	      # ssh-keygen -R will fail if the known_hosts file does not exist
+        [ ! -r $HOME/.ssh/known_hosts ] && touch $HOME/.ssh/known_hosts && chmod 644 $HOME/.ssh/known_hosts
+        ssh-keygen -R $(cat playbooks/AdoptOpenJDK_Unix_Playbook/hosts.unx)
+        sed -i -e "s/.*hosts:.*/- hosts: all/g" playbooks/AdoptOpenJDK_Unix_Playbook/main.yml
+	      awk '{print}/^\[defaults\]$/{print "private_key_file = id_rsa"; print "timeout = 30"}' < ansible.cfg > ansible.cfg.tmp && mv ansible.cfg.tmp ansible.cfg
+        ansible-playbook -i playbooks/AdoptOpenJDK_Unix_Playbook/hosts.unx -u vagrant -b --skip-tags adoptopenjdk,jenkins playbooks/AdoptOpenJDK_Unix_Playbook/main.yml
