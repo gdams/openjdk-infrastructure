@@ -41,5 +41,4 @@ jobs:
     - name: Run Asible Playbook
       run: |
         cd ansible
-        ansible --version
         ansible-playbook -i playbooks/AdoptOpenJDK_Unix_Playbook/hosts.unx -u vagrant -b --skip-tags adoptopenjdk,jenkins playbooks/AdoptOpenJDK_Unix_Playbook/main.yml
