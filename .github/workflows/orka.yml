@@ -49,7 +49,8 @@ jobs:
         orka login --email ${{ secrets.ORKA_USERNAME }} --password ${{ secrets.ORKA_PASSWORD }} -y
 
     - name: Create blank VM
-      run: orka vm create --vm updater --base-image 90GCatalinaSSH.img -y
+      run: |
+        orka vm create --vm updater --base-image 90GCatalinaSSH.img -y
         IP_ADDRESS=$(orka vm status --vm updater -y  | grep IP | sed "s/IP //g" | sed "s/ //g")
         echo "orka ansible_host=$IP_ADDRESS ansible_port=8822 ansible_user=admin ansible_password=${{ secrets.ORKA_VM_PASSWORD }}" > ansible/hosts
 
