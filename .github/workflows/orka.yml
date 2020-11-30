@@ -21,8 +21,8 @@ jobs:
 
     - name: Install OpenConnect
       run: |
-        apt-get update
-        apt install -y openconnect network-manager-openconnect
+        sudo apt-get update
+        sudo apt install -y openconnect network-manager-openconnect
     
     - name: Connect to VPN
       run: echo ${{ secrets.OPENCONNECT_PASSWORD }} | sudo openconnect 207.254.69.146 -b  --user=${{ secrets.OPENCONNECT_USERNAME }} --passwd-on-stdin --servercert sha256:c15403309606083b5b296ce753874ab9612beb6eb6b1e7a15a41fbcbf373b9c7
