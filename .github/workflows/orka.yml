@@ -1,0 +1,63 @@
+name: Ansible Playbook
+
+on:
+  workflow_dispatch:
+  pull_request_target:
+    types: [opened, synchronize, edited, reopened]
+    paths:
+    - ansible/**
+    branches:         
+    - master
+
+jobs:
+  build-orka:
+    name: Orka
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        path: gh-actions
+        fetch-depth: 0
+
+    - name: Setup branch
+      run: |
+        GIT_REMOTE_REF=refs/pull/$PR_NUMBER/head
+        cd gh-actions
+        git fetch origin $GIT_REMOTE_REF:testBranch
+        git checkout testBranch
+      env:
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+
+    - name: Install OpenConnect
+      run: |
+        apt-get update
+        apt install -y openconnect network-manager-openconnect
+    
+    - name: Connect to VPN
+      run: echo ${{ secrets.OPENCONNECT_PASSWORD }} | sudo openconnect 207.254.69.146 -b  --user=${{ secrets.OPENCONNECT_USERNAME }} --passwd-on-stdin --servercert sha256:c15403309606083b5b296ce753874ab9612beb6eb6b1e7a15a41fbcbf373b9c7
+
+    - name: Install Orka CLI
+      run: |
+        wget https://cli-builds-public.s3-eu-west-1.amazonaws.com/official/1.4.0/d621805/linux/orka.zip
+        unzip orka.zip
+        mv orka /usr/local/bin/
+        
+    - name: Login to Orka
+      run: |
+        orka config -a http://10.221.188.100 -l ${{ secrets.ORKA_LICENSE }} -y
+        orka login --email ${{ secrets.ORKA_USERNAME }} --password ${{ secrets.ORKA_PASSWORD }} -y
+
+    - name: Create blank VM
+        orka vm create --vm updater --base-image 90GCatalinaSSH.img -y
+        IP_ADDRESS=$(orka vm status --vm updater -y  | grep IP | sed "s/IP //g" | sed "s/ //g")
+        echo "orka ansible_host=$IP_ADDRESS ansible_port=8822 ansible_user=admin ansible_password=${{ secrets.ORKA_VM_PASSWORD }}" > ansible/hosts
+
+    - name: Run Ansible Playbook
+      run: |
+        set -eux
+        cd ansible
+        ansible-playbook -i hosts playbooks/AdoptOpenJDK_Unix_Playbook/main.yml --skip-tags="hosts_file,hostname,brew_cu,kernel_tuning,adoptopenjdk,jenkins,nagios,superuser,swap_file,crontab"
+
+    - name: Destroy Orka VM
+      run: orka vm purge --vm updater -y
