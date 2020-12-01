@@ -23,7 +23,7 @@ jobs:
       run: |
         wget https://cli-builds-public.s3-eu-west-1.amazonaws.com/official/1.4.0/d621805/linux/orka.zip
         unzip orka.zip
-        mv orka /usr/local/bin/
+        sudo mv orka /usr/local/bin/
 
     - name: Install OpenConnect
       run: |
