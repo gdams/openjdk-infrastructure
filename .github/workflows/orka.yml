@@ -18,6 +18,12 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
+  
+    - name: Install Orka CLI
+      run: |
+        wget https://cli-builds-public.s3-eu-west-1.amazonaws.com/official/1.4.0/d621805/linux/orka.zip
+        unzip orka.zip
+        mv orka /usr/local/bin/
 
     - name: Install OpenConnect
       run: |
@@ -26,12 +32,6 @@ jobs:
     
     - name: Connect to VPN
       run: echo ${{ secrets.OPENCONNECT_PASSWORD }} | sudo openconnect 207.254.69.146 -b  --user=${{ secrets.OPENCONNECT_USERNAME }} --passwd-on-stdin --servercert sha256:c15403309606083b5b296ce753874ab9612beb6eb6b1e7a15a41fbcbf373b9c7
-
-    - name: Install Orka CLI
-      run: |
-        wget https://cli-builds-public.s3-eu-west-1.amazonaws.com/official/1.4.0/d621805/linux/orka.zip
-        unzip orka.zip
-        mv orka /usr/local/bin/
         
     - name: Login to Orka
       run: |
