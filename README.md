@@ -147,7 +147,7 @@ Backup retention:
 - How many copies?
 
 ## OS Patch Management
-**WARNING:** Several of our hosts are internet facing and we need to stay vigilant 
+**WARNING:** Several of our hosts are izxzxznternet facing and we need to stay vigilant 
 of the potential security risks this presents.
 
 ### Patch Management / Minimum Time Frame
