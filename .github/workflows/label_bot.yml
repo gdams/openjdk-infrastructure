@@ -1,14 +1,28 @@
-on: 
-    pull_request_target:
-        types: [opened, edited, ready_for_review, reopened]
-    issue_comment:
+name: Labeler
+on: [pull_request]
 
 jobs:
-  pr_commented:
-    # This job only runs for pull request comments
-    name: Label bot
-    if: ${{ github.event.issue.pull_request }}
+  label:
+
     runs-on: ubuntu-latest
+
     steps:
-      - run: |
-          echo "Comment on PR #${{ github.event.comment.body }}"
+    - name: actions/labeler@v3
+      uses: actions/labeler@v3
+      with:
+        github-token: "${{ secrets.GITHUB_TOKEN }}"
+        doc:
+            - docs/*
+            - **/*.md
+        Vagrant:
+            - ansible/pbTestScripts/*
+            - ansible/Vagrantfile*
+        pbTests:
+            - ansible/pbTestScripts/*
+        docker:
+            - ansible/Dockerfile*
+        ansible:
+            - ansible/playbooks/*
+            - ansible/plugins/*
+            - ansible/inventory.yml
+            - ansible/ansible.cfg
