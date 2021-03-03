@@ -23,7 +23,6 @@
     - role: Get_Vendor_Files
       tags: [vendor_files, adoptopenjdk]
     - Version
-    - Common
     - Providers                   # AdoptOpenJDK Infrastructure
     - autoconf
     - curl
