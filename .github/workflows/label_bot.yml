@@ -1,7 +1,7 @@
 on: 
     pull_request_target:
         types: [opened, edited, ready_for_review, reopened]
-    issue_comment
+    issue_comment:
 
 jobs:
   pr_commented:
