@@ -5,8 +5,7 @@
 
 doc:
     - docs/*
-    - ./*.md
-    - ./**/*.md
+    - '**/*.md'
 Vagrant:
     - ansible/pbTestScripts/*
     - ansible/pbTestScripts/**/*
