@@ -1,0 +1,15 @@
+doc:
+    - docs/*
+    - **/*.md
+Vagrant:
+    - ansible/pbTestScripts/*
+    - ansible/Vagrantfile*
+pbTests:
+    - ansible/pbTestScripts/*
+docker:
+    - ansible/Dockerfile*
+ansible:
+    - ansible/playbooks/*
+    - ansible/plugins/*
+    - ansible/inventory.yml
+    - ansible/ansible.cfg
