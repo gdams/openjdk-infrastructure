@@ -4,7 +4,6 @@
 # Updates all packages for macos-based distributions
 #
 
-# test change
 - name: Get macOS version
   shell: sw_vers -productVersion
   register: macos_version
