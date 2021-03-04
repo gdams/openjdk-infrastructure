@@ -1,68 +1,68 @@
-# Config file used by Multi Labeller https://github.com/marketplace/actions/multi-labeler
+# Config file used by Multi Labeller https:github.commarketplaceactionsmulti-labeler
 
 version: v1
 
 labels:
   - label: "os:macOS"
     matcher:
-      title: "/mac"
+      title: "mac"
   - label: "os:aix"
     matcher:
-      title: "/aix"
+      title: "aix"
   - label: "os:windows"
     matcher:
-      title: "/windows"
+      title: "windows"
 
   - label: "arch:arm32"
     matcher:
-      title: "/arm32"
+      title: "arm32"
   - label: "arch:arm64"
     matcher:
-      title: "/arm64"
+      title: "arm64"
   - label: "arch:ppc64le (pLinux)"
     matcher:
-      title: "/ppc64le"
+      title: "ppc64le"
   - label: "arch:s390x (zLinux)"
     matcher:
-      title: "/s390x"
+      title: "s390x"
   - label: "arch:x64"
     matcher:
-      title: "/x64"
+      title: "x64"
 
   - label: "provider:aws"
     matcher:
-      title: "/aws"
+      title: "aws"
   - label: "provider:azure"
     matcher:
-      title: "/azure"
+      title: "azure"
   - label: "provider:ibmcloud"
     matcher:
-      title: "/ibmcloud"
+      title: "ibmcloud"
   - label: "provider:linaro"
     matcher:
-      title: "/linaro"
+      title: "linaro"
   - label: "provider:marist"
     matcher:
-      title: "/marist"
+      title: "marist"
   - label: "provider:osuosl"
     matcher:
-      title: "/osuosl"
+      title: "osuosl"
   - label: "provider:scaleway"
     matcher:
-      title: "/scaleway"
+      title: "scaleway"
 
   - label: "docker"
     matcher:
-      title: "/docker"
+      title: "docker"
   - label: "hacktoberfest"
     matcher:
-      body: "/hacktoberfest"
+      body: "hacktoberfest"
   - label: "Nagios"
     matcher:
-      title: "/nagios"
+      title: "nagios"
   - label: "openj9"
     matcher:
-      title: "/openj9"
+      title: "openj9"
   - label: "Vagrant"
     matcher:
-      title: "/vagrant"
+      title: "vagrant"
