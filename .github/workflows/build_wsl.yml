@@ -15,7 +15,7 @@ on:
 jobs:
   build-wsl:
     name: Windows 2019
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
 
     - name: Setup WinRM and Password
@@ -37,6 +37,54 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt install -y ansible
+
+    - name: Setup Hosts file
+      run: |
+        cd ansible
+        rm -f playbooks/AdoptOpenJDK_Windows_Playbook/hosts.win
+        cat <<EOF > playbooks/AdoptOpenJDK_Windows_Playbook/hosts.win
+        [windows]
+        127.0.0.1
+        [windows:vars]
+        ansible_user=runneradmin
+        ansible_password=Ansible_password123!
+        ansible_become=false
+        EOF
+        sed -i -e "s/.*hosts:.*/- hosts: all/g" playbooks/AdoptOpenJDK_Windows_Playbook/main.yml
+
+    - name: Run Ansible Playbook
+      run: |
+        cd ansible
+        export ANSIBLE_CONFIG=./ansible.cfg
+        # Skip MSVS_2013 until https://github.com/adoptium/infrastructure/issues/2178 is fixed
+        ansible-playbook -i playbooks/AdoptOpenJDK_Windows_Playbook/hosts.win -b --skip-tags adoptopenjdk,jenkins,MSVS_2013,reboot playbooks/AdoptOpenJDK_Windows_Playbook/main.yml
+
+  build-cygwin:
+    name: Windows 2016
+    runs-on: windows-2016
+    steps:
+
+    - name: Setup WinRM and Password
+      shell: powershell
+      run: |
+        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "Ansible_password123!" -Force)
+        New-NetFirewallRule -DisplayName "ALLOW TCP PORT 5986" -Direction inbound -Profile Any -Action Allow -LocalPort 5986 -Protocol TCP
+        Invoke-WebRequest https://raw.githubusercontent.com/ansible/ansible/devel/examples/scripts/ConfigureRemotingForAnsible.ps1 -OutFile .\ConfigureRemotingForAnsible.ps1
+        .\ConfigureRemotingForAnsible.ps1 -CertValidityDays 9999
+        .\ConfigureRemotingForAnsible.ps1 -EnableCredSSP
+        .\ConfigureRemotingForAnsible.ps1 -ForceNewSSLCert
+        .\ConfigureRemotingForAnsible.ps1 -SkipNetworkProfileCheck
+
+    - uses: actions/checkout@v2
+
+    - uses: cygwin/cygwin-install-action@v1
+      with:
+        packages: curl, python, python-setuptools, python-crypto, openssl, openssl-devel, libffi-devel
+
+    - name: Install dependencies
+      run: |
+        easy_install-2.7 pip
+        pip install ansible
 
     - name: Setup Hosts file
       run: |
