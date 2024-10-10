@@ -34,7 +34,7 @@ jobs:
               id: get_changed_files
               run: |
                 if [ ${{ github.event_name }} == "push" ]; then
-                    changed_files=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep ansible/docker/test/Dockerfile)
+                    git diff --name-only HEAD~1 | grep ansible/docker/test/Dockerfile)
                 else
                     changed_files=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep ansible/docker/test/Dockerfile)
                 fi
@@ -42,6 +42,7 @@ jobs:
 
             # Generate matrix
             - name: Generate matrix
+              if: steps.get_changed_files.outputs.changed_files
               id: generate_matrix
               run: |
                 matrix=$(jq -n --arg files "${changed_files}" '{
