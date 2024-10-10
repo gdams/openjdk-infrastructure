@@ -22,7 +22,6 @@ jobs:
     generate-matrix:
         name: Generate Matrix
         runs-on: ubuntu-latest
-        if: github.repository_owner == 'adoptium'
         outputs:
             matrix: ${{ steps.generate_matrix.outputs.matrix }}
         steps:
