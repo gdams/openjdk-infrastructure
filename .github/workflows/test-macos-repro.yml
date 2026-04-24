@@ -1,0 +1,112 @@
+# Lightweight workflow to reproduce test failures on GHA macOS intel runners.
+# Trigger manually from the Actions tab with an optional random seed.
+
+name: Reproduce macOS Test Failures
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: 'Random seed for MethodMatcherTest (blank = random)'
+        required: false
+        default: ''
+      test_amount:
+        description: 'Number of iterations per method'
+        required: false
+        default: '50'
+
+jobs:
+  repro:
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+
+    steps:
+      - name: Download Temurin 25 x64
+        run: |
+          curl -sL -o /tmp/jdk.tar.gz \
+            "https://api.adoptium.net/v3/binary/latest/25/ga/mac/x64/jdk/hotspot/normal/eclipse"
+          mkdir -p /tmp/jdk
+          tar xzf /tmp/jdk.tar.gz -C /tmp/jdk
+          JAVA_HOME=$(ls -d /tmp/jdk/*/Contents/Home)
+          echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+          $JAVA_HOME/bin/java -version
+          file $JAVA_HOME/bin/java
+
+      - name: Clone OpenJDK test sources (sparse)
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse \
+            https://github.com/openjdk/jdk.git /tmp/openjdk-jdk
+          cd /tmp/openjdk-jdk
+          git sparse-checkout set \
+            test/hotspot/jtreg/compiler/compilercontrol \
+            test/lib/jdk/test/whitebox \
+            test/lib/jdk/test/lib
+
+      - name: Build WhiteBox
+        run: |
+          mkdir -p /tmp/wb-classes
+          find /tmp/openjdk-jdk/test/lib/jdk/test/whitebox -name "*.java" | \
+            xargs $JAVA_HOME/bin/javac \
+              --add-exports java.base/jdk.internal.misc=ALL-UNNAMED \
+              -d /tmp/wb-classes
+          $JAVA_HOME/bin/jar cf /tmp/whitebox.jar -C /tmp/wb-classes .
+
+      - name: Build test classes
+        run: |
+          mkdir -p /tmp/test-classes
+          # Patch Platform.java for JDK compatibility (Process as AutoCloseable)
+          sed -i '' 's/try (Process p = pb.start()) {/try { Process p = pb.start();/' \
+            /tmp/openjdk-jdk/test/lib/jdk/test/lib/Platform.java
+
+          $JAVA_HOME/bin/javac \
+            --add-exports java.base/jdk.internal.misc=ALL-UNNAMED \
+            -cp /tmp/wb-classes \
+            -sourcepath /tmp/openjdk-jdk/test/lib:/tmp/openjdk-jdk/test/hotspot/jtreg \
+            -d /tmp/test-classes \
+            /tmp/openjdk-jdk/test/hotspot/jtreg/compiler/compilercontrol/matcher/MethodMatcherTest.java
+
+      - name: Run MethodMatcherTest
+        run: |
+          SEED_OPT=""
+          if [[ -n "${{ inputs.seed }}" ]]; then
+            SEED_OPT="-Djdk.test.lib.random.seed=${{ inputs.seed }}"
+          fi
+
+          echo "::group::Environment"
+          uname -a
+          sw_vers
+          $JAVA_HOME/bin/java -version 2>&1
+          echo "Seed option: ${SEED_OPT:-<random>}"
+          echo "::endgroup::"
+
+          $JAVA_HOME/bin/java \
+            -Xbootclasspath/a:/tmp/whitebox.jar \
+            -XX:+UnlockDiagnosticVMOptions \
+            -XX:+WhiteBoxAPI \
+            --add-exports java.base/jdk.internal.misc=ALL-UNNAMED \
+            $SEED_OPT \
+            -Dtest.amount=${{ inputs.test_amount }} \
+            -cp /tmp/test-classes \
+            compiler.compilercontrol.matcher.MethodMatcherTest
+
+      - name: Run multicast diagnostic
+        if: always()
+        run: |
+          echo "::group::Network interfaces"
+          ifconfig -a
+          echo "::endgroup::"
+
+          echo "::group::Routing table"
+          netstat -rn -f inet  | grep -E '224|multicast' || echo "No IPv4 multicast routes"
+          netstat -rn -f inet6 | grep -i 'ff00\|multicast' || echo "No IPv6 multicast routes"
+          echo "::endgroup::"
+
+          echo "::group::Firewall"
+          /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate || true
+          echo "::endgroup::"
+
+          echo "::group::Hostname resolution"
+          hostname
+          dscacheutil -q host -a name "$(hostname)" || true
+          cat /etc/hosts
+          echo "::endgroup::"
