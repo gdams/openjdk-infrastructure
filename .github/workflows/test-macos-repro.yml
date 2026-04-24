@@ -17,14 +17,22 @@ on:
 
 jobs:
   repro:
-    runs-on: macos-15-intel
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            arch: x64
+          - runner: macos-15
+            arch: aarch64
 
     steps:
-      - name: Download Temurin 25 x64
+      - name: Download Temurin 25 (${{ matrix.arch }})
         run: |
           curl -sL -o /tmp/jdk.tar.gz \
-            "https://api.adoptium.net/v3/binary/latest/25/ga/mac/x64/jdk/hotspot/normal/eclipse"
+            "https://api.adoptium.net/v3/binary/latest/25/ga/mac/${{ matrix.arch }}/jdk/hotspot/normal/eclipse"
           mkdir -p /tmp/jdk
           tar xzf /tmp/jdk.tar.gz -C /tmp/jdk
           JAVA_HOME=$(ls -d /tmp/jdk/*/Contents/Home)
@@ -84,6 +92,17 @@ jobs:
           sed -i '' 's/try (Process p = pb.start()) {/try { Process p = pb.start();/' \
             /tmp/openjdk-jdk/test/lib/jdk/test/lib/Platform.java
 
+          # PATCH: Remove the curly-brace mutator from MethodGenerator.
+          # The JVM MethodMatcher on Intel macOS 15 GHA runners fails to
+          # parse patterns containing '{' and '}' even though they are in
+          # the sscanf RANGEBASE character class. This is suspected to be
+          # a libc sscanf character-class parsing difference on Intel.
+          sed -i '' '/{.*input.*}/d' \
+            /tmp/openjdk-jdk/test/hotspot/jtreg/compiler/compilercontrol/share/method/MethodGenerator.java
+          echo "Patched MethodGenerator — removed curly-brace mutator"
+          grep -n "elements.add" \
+            /tmp/openjdk-jdk/test/hotspot/jtreg/compiler/compilercontrol/share/method/MethodGenerator.java | tail -20
+
           $JAVA_HOME/bin/javac \
             --add-exports java.base/jdk.internal.misc=ALL-UNNAMED \
             -cp /tmp/wb-classes \
@@ -91,7 +110,54 @@ jobs:
             -d /tmp/test-classes \
             /tmp/openjdk-jdk/test/hotspot/jtreg/compiler/compilercontrol/matcher/MethodMatcherTest.java
 
-      - name: Run MethodMatcherTest
+      - name: Diagnose sscanf curly brace handling
+        run: |
+          # Compile and run a minimal C program to test if sscanf accepts
+          # '{' and '}' in a character class matching the JVM's RANGEBASE
+          cat > /tmp/scanf_test.c << 'EOF'
+          #include <stdio.h>
+          #include <string.h>
+          int main() {
+            // Simplified RANGEBASE character class from methodMatcher.cpp
+            // includes \x7b '{' and \x7d '}'
+            char cls[256] = {0}, meth[256] = {0};
+            int n = 0;
+
+            // Pattern that matches the failing test case (after canonicalize)
+            const char* input = "-* *{method} (I)V";
+            int r = sscanf(input,
+              "%255[*!\"#$%%&'*+,-./:0-9;<=>\?@A-Z\\^_`a-z{|}~]"
+              "%*[ \t]"
+              "%255[*!\"#$%%&'*+,-.0-9;<=>\?@A-Z\\^_`a-z{|}~]"
+              "%n",
+              cls, meth, &n);
+            printf("sscanf returned: %d\n", r);
+            printf("class_name: '%s'\n", cls);
+            printf("method_name: '%s'\n", meth);
+            printf("bytes_read: %d\n", n);
+
+            // Direct test: does sscanf match '{' in a character class?
+            char buf[64] = {0};
+            int r2 = sscanf("{test}", "%63[{a-z}]", buf);
+            printf("\nDirect brace test: sscanf returned %d, buf='%s'\n", r2, buf);
+
+            // Test with exact RANGEBASE hex sequences from JVM source
+            char buf2[64] = {0};
+            int r3 = sscanf("{method}", "%63[\x70-\x7f*a-z]", buf2);
+            printf("Hex range test: sscanf returned %d, buf2='%s'\n", r3, buf2);
+
+            return 0;
+          }
+          EOF
+          cc -arch x86_64 -o /tmp/scanf_test /tmp/scanf_test.c
+          echo "=== Running sscanf test (x86_64) ==="
+          /tmp/scanf_test
+          echo ""
+          echo "=== Running sscanf test (arm64 for comparison) ==="
+          cc -arch arm64 -o /tmp/scanf_test_arm /tmp/scanf_test.c
+          /tmp/scanf_test_arm
+
+      - name: Run MethodMatcherTest (patched)
         run: |
           SEED_OPT=""
           if [[ -n "${{ inputs.seed }}" ]]; then
