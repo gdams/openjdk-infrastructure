@@ -29,18 +29,44 @@ jobs:
           tar xzf /tmp/jdk.tar.gz -C /tmp/jdk
           JAVA_HOME=$(ls -d /tmp/jdk/*/Contents/Home)
           echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+
+          # Extract the upstream tag (e.g. "25.0.3+9" -> "jdk-25.0.3+9")
+          JDK_TAG="jdk-$($JAVA_HOME/bin/java -XshowSettings:java 2>&1 | awk -F= '/java.version /{gsub(/ /,"",$2); print $2}')+$($JAVA_HOME/bin/java -XshowSettings:java 2>&1 | awk -F= '/java.version.date/{print ""}' | head -1)$($JAVA_HOME/bin/java -version 2>&1 | grep -oE '\+[0-9]+')"
+          # Simpler: parse from java -version output "25.0.3+9"
+          VERSION=$($JAVA_HOME/bin/java -version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\+[0-9]+' | head -1)
+          echo "JDK_TAG=jdk-${VERSION}" >> "$GITHUB_ENV"
+
           $JAVA_HOME/bin/java -version
           file $JAVA_HOME/bin/java
+          echo "Will use test sources from tag: jdk-${VERSION}"
 
-      - name: Clone OpenJDK test sources (sparse)
+      - name: Clone OpenJDK test sources (matching JDK version)
         run: |
-          git clone --depth 1 --filter=blob:none --sparse \
-            https://github.com/openjdk/jdk.git /tmp/openjdk-jdk
+          # Try the exact tag first, fall back to tip
+          if git ls-remote --tags https://github.com/openjdk/jdk.git "${JDK_TAG}" | grep -q .; then
+            echo "Checking out matching tag: ${JDK_TAG}"
+            git clone --depth 1 --branch "${JDK_TAG}" --filter=blob:none --sparse \
+              https://github.com/openjdk/jdk.git /tmp/openjdk-jdk
+          else
+            echo "Tag ${JDK_TAG} not found, trying release repo..."
+            # Temurin 25.0.x comes from jdk25u repo
+            MAJOR=$(echo "$JDK_TAG" | grep -oE 'jdk-[0-9]+' | grep -oE '[0-9]+')
+            if git ls-remote --tags "https://github.com/openjdk/jdk${MAJOR}u.git" "${JDK_TAG}" | grep -q .; then
+              echo "Found tag in jdk${MAJOR}u repo"
+              git clone --depth 1 --branch "${JDK_TAG}" --filter=blob:none --sparse \
+                "https://github.com/openjdk/jdk${MAJOR}u.git" /tmp/openjdk-jdk
+            else
+              echo "WARNING: No matching tag found, using tip (may cause false failures)"
+              git clone --depth 1 --filter=blob:none --sparse \
+                https://github.com/openjdk/jdk.git /tmp/openjdk-jdk
+            fi
+          fi
           cd /tmp/openjdk-jdk
           git sparse-checkout set \
             test/hotspot/jtreg/compiler/compilercontrol \
             test/lib/jdk/test/whitebox \
             test/lib/jdk/test/lib
+          echo "Test sources from: $(git log --oneline -1)"
 
       - name: Build WhiteBox
         run: |
